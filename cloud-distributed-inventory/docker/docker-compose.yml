@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # MongoDB Replica Set Member 1
+  mongo1:
+    image: mongo:7.0
+    container_name: cdi-mongo1
+    restart: always
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo1_data:/data/db
+    networks:
+      - inventory_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Replica Set Member 2
+  mongo2:
+    image: mongo:7.0
+    container_name: cdi-mongo2
+    restart: always
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo2_data:/data/db
+    networks:
+      - inventory_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Replica Set Member 3
+  mongo3:
+    image: mongo:7.0
+    container_name: cdi-mongo3
+    restart: always
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo3_data:/data/db
+    networks:
+      - inventory_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Replica Set Initiator
+  mongo-setup:
+    image: mongo:7.0
+    container_name: cdi-mongo-setup
+    restart: "no"
+    depends_on:
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      mongo3:
+        condition: service_healthy
+    networks:
+      - inventory_net
+    volumes:
+      - ../database/replica-set/init-replica-set.js:/init-replica-set.js
+    entrypoint:
+      - "bash"
+      - "-c"
+      - |
+        echo "Waiting for replica members to be responsive..."
+        sleep 3
+        mongosh --host mongo1:27017 /init-replica-set.js || true
+        echo "Replica set rs0 initialized successfully."
+
+  # Express Backend API Service
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: cdi-backend
+    restart: always
+    depends_on:
+      mongo-setup:
+        condition: service_completed_successfully
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/distributed_inventory?replicaSet=rs0
+      - JWT_SECRET=distributed-inventory-secret-key-super-secure-viva-2026
+      - FRONTEND_URL=http://localhost:3000
+      - REPLICA_SET_NAME=rs0
+    ports:
+      - "5000:5000"
+    networks:
+      - inventory_net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # React Vite Frontend Dashboard
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: cdi-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - inventory_net
+
+networks:
+  inventory_net:
+    driver: bridge
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:

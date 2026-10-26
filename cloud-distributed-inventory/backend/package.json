@@ -1,0 +1,37 @@
+{
+  "name": "distributed-inventory-backend",
+  "version": "1.0.0",
+  "description": "Production-style backend for Cloud-Based Distributed Inventory Management System",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test tests/api.test.js",
+    "seed": "node src/utils/seedData.js",
+    "seed:hosur": "node src/utils/seedHosurProducts.js",
+    "seed:chennai": "node src/utils/seedChennaiProducts.js",
+    "seed:bangalore": "node src/utils/seedBangaloreProducts.js",
+    "reset-stock": "node src/utils/resetInventoryToZero.js",
+    "clear-products": "node src/utils/clearAllProducts.js",
+    "migrate:vertical": "node ../database/fragmentation/migrate-vertical-fragmentation.js",
+    "test:vertical": "node ../tests/fragmentation/test-vertical-fragmentation.js"
+  },
+  "keywords": ["distributed-database", "inventory", "mongodb", "replica-set", "fragmentation"],
+  "author": "Antigravity Academic Mentor",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0"
+  }
+}
